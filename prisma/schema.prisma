@@ -3,31 +3,67 @@
 
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
+// 1. 客户端生成器
 generator client {
   provider = "prisma-client-js"
 }
 
+// 2. 数据库连接
 datasource db {
   provider = "postgresql"
+}
+
+// 3. 角色枚举（守卫的核心依据）
+enum Role {
+  USER
+  ADMIN
 }
 
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
+  password  String   // 存 bcrypt 加密后的密文
   name      String?
-  posts     Post[]
+  role      Role     @default(USER) // 默认普通用户，方便测试守卫权限
+
+  posts     Post[]   // 一对多关联
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
 }
 
 model Admin {
   id        Int      @id @default(autoincrement())
   email     String   @unique
+  password  String   
   name      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
+// 5. 帖子表（用于演示 CRUD 和关联查询）
 model Post {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   title     String
   content   String?
-  published Boolean   @default(false)
-  author    User?
+  published Boolean  @default(false)
+
+  // 外键：帖子必须属于某个用户（用于守卫验证“是否是作者本人”）
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("posts")
+  @@index([authorId]) // 加个索引，加速按作者查帖子
 }
+
+
+
+
+
+
+
